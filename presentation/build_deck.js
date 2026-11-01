@@ -186,6 +186,33 @@ const TBL_BORDER = { type: "solid", pt: 0.75, color: HEX.accent6 };
   s.addTable(rows, { x: MX, y: 1.6, w: W - 2 * MX, colW: [3.6, 5.6, 2.933], fontSize: 13, color: C.text1, border: TBL_BORDER, rowH: 0.62, valign: "middle", objectName: nm("table") });
 }
 
+// ---------- 5b. Why GDN ----------
+{
+  const s = contentSlide("Background", "Method choice", "Why GDN is our main reproduction");
+  const reasons = [
+    ["A checkable published target", "SWaT F1 0.81, no point-adjust"],
+    ["Built for a coupled plant", "Attacks break learned sensor links"],
+    ["Names the deviating sensor", "Enables our stage-wise P1–P6 alarms"],
+    ["Feasible on our hardware", "Small model, trains on CPU"],
+  ];
+  const g = 0.35, cw = (W - 2 * MX - g) / 2, ch = 1.9;
+  reasons.forEach(([t, d], i) => {
+    const x = MX + (i % 2) * (cw + g), y = 1.6 + Math.floor(i / 2) * (ch + 0.3);
+    s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x, y, w: cw, h: ch, rectRadius: 0.06, fill: { color: C.background2 }, line: { color: C.accent6, width: 1 }, objectName: nm("card") });
+    s.addShape(pres.shapes.OVAL, { x: x + 0.3, y: y + 0.3, w: 0.5, h: 0.5, fill: { color: C.accent1 }, line: { color: C.accent1 }, objectName: nm("dot") });
+    s.addText(String(i + 1), { x: x + 0.3, y: y + 0.3, w: 0.5, h: 0.5, fontSize: 16, bold: true, color: C.background1, align: "center", valign: "middle", margin: 0, isTextBox: true, objectName: nm("dot-n") });
+    s.addText(t, { x: x + 1.0, y: y + 0.3, w: cw - 1.3, h: 0.5, fontSize: 20, bold: true, fontFace: THEME.headFontFace, color: C.text1, valign: "middle", margin: 0, isTextBox: true, objectName: nm("card-t") });
+    s.addText(d, { x: x + 1.0, y: y + 0.95, w: cw - 1.3, h: 0.6, fontSize: 16, color: C.text1, valign: "top", margin: 0, isTextBox: true, objectName: nm("card-b") });
+  });
+  s.addNotes([
+    "1. Published SWaT P 99.35 / R 68.12 / F1 0.81, point-wise. Kim et al. show point-adjust inflates F1, so this is a fair number to reproduce.",
+    "2. SWaT's six stages are tightly coupled. GDN learns a sensor graph and forecasts each sensor from its neighbours with graph attention; an attack that breaks a dependency becomes forecast error. USAD reconstructs a flat window instead.",
+    "3. Score = largest normalised per-sensor error, so each alarm names a sensor. We group these by stage for the P1–P6 alarms; single-score detectors cannot do this.",
+    "4. Window 5, embedding 64, top-15 neighbours. Dense attention in plain PyTorch on CPU. We follow GDN's preprocessing so numbers are comparable.",
+    "Reasons are from the design stage, not from our results. Do not call GDN the best published SWaT detector.",
+  ].join("\n"));
+}
+
 // ---------- 6. Network / fusion check ----------
 {
   const s = contentSlide("Background", "Network data", "Why we detect from process data");
@@ -305,22 +332,72 @@ const TBL_BORDER = { type: "solid", pt: 0.75, color: HEX.accent6 };
 
 // ---------- 10. Original contributions ----------
 {
-  const s = contentSlide("Contribution", "Original modifications", "Four stretch goals, in priority order");
-  const items = [
-    ["Rigorous re-evaluation", "Show how far published-style numbers fall when the threshold is chosen without labels and recall is counted per step or per event."],
-    ["Plant-aware alarms", "Group GDN's per-sensor errors by stage P1–P6, set a threshold per stage, and require k of the last n steps. Measure false alarms and time to detect; the operator sees which stage alarmed."],
-    ["Transfer to WADI", "Apply the SWaT-tuned configuration to WADI without re-tuning: a larger, messier plant."],
-    ["Network + process fusion (optional)", "Only if network CSVs for a few attack windows are obtained: do network features catch attacks the process model misses, or sooner?"],
+  const s = contentSlide("Contribution", "Original modifications", "Two stretch goals beyond the reproduction");
+  const pw = (W - 2 * MX - 0.35) / 2, py = 1.55, ph = 5.15;
+  const arrow = (x1, y1, x2) => s.addShape(pres.shapes.LINE, { x: x1, y: y1, w: x2 - x1, h: 0.001, line: { color: C.accent5, width: 1.5, endArrowType: "triangle" }, objectName: nm("arrow") });
+  const panel = (x, n, title, sub) => {
+    s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x, y: py, w: pw, h: ph, rectRadius: 0.06, fill: { color: C.background1 }, line: { color: C.accent6, width: 1 }, objectName: nm("card") });
+    s.addShape(pres.shapes.OVAL, { x: x + 0.3, y: py + 0.3, w: 0.5, h: 0.5, fill: { color: C.accent1 }, line: { color: C.accent1 }, objectName: nm("dot") });
+    s.addText(String(n), { x: x + 0.3, y: py + 0.3, w: 0.5, h: 0.5, fontSize: 16, bold: true, color: C.background1, align: "center", valign: "middle", margin: 0, isTextBox: true, objectName: nm("dot-n") });
+    s.addText(title, { x: x + 1.0, y: py + 0.3, w: pw - 1.3, h: 0.5, fontSize: 20, bold: true, fontFace: THEME.headFontFace, color: C.text1, valign: "middle", margin: 0, isTextBox: true, objectName: nm("card-t") });
+    s.addText(sub, { x: x + 0.3, y: py + 0.9, w: pw - 0.6, h: 0.45, fontSize: 14, color: C.accent5, valign: "top", margin: 0, isTextBox: true, objectName: nm("card-d") });
+  };
+
+  // Left: threshold rule x counting rule matrix
+  const lx = MX;
+  panel(lx, 1, "Rigorous re-evaluation", "Do published scores survive a label-free threshold and strict counting?");
+  const rhw = 1.55, cg = 0.15, cx0 = lx + 0.3 + rhw + cg, cw = (pw - 0.6 - rhw - cg - cg) / 2, chh = 1.1, ry0 = py + 2.0;
+  ["Point-adjusted", "Strict counting"].forEach((t, j) => s.addText(t, { x: cx0 + j * (cw + cg), y: py + 1.5, w: cw, h: 0.4, fontSize: 13, bold: true, color: C.text1, align: "center", valign: "bottom", margin: 0, isTextBox: true, objectName: nm("mx-col") }));
+  ["Labels pick the threshold", "Validation data only"].forEach((t, i) => s.addText(t, { x: lx + 0.3, y: ry0 + i * (chh + cg), w: rhw, h: chh, fontSize: 13, bold: true, color: C.text1, valign: "middle", margin: 0, isTextBox: true, objectName: nm("mx-row") }));
+  const cells = [
+    ["High", "typical paper", false],
+    ["0.81", "GDN published F1", false],
+    ["?", "still inflated by PA", false],
+    ["?", "deployable: our headline", true],
   ];
-  const cw = (W - 2 * MX - 0.35) / 2, ch = 2.05;
-  items.forEach(([t, d], i) => {
-    const x = MX + (i % 2) * (cw + 0.35), y = 1.6 + Math.floor(i / 2) * (ch + 0.3);
-    s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x, y, w: cw, h: ch, rectRadius: 0.06, fill: { color: i === 3 ? C.background1 : C.background2 }, line: { color: C.accent6, width: 1 }, objectName: nm("card") });
-    s.addShape(pres.shapes.OVAL, { x: x + 0.25, y: y + 0.25, w: 0.55, h: 0.55, fill: { color: C.accent1 }, line: { color: C.accent1 }, objectName: nm("dot") });
-    s.addText(String(i + 1), { x: x + 0.25, y: y + 0.25, w: 0.55, h: 0.55, fontSize: 18, bold: true, color: C.background1, align: "center", valign: "middle", margin: 0, isTextBox: true, objectName: nm("dot-n") });
-    s.addText(t, { x: x + 1.0, y: y + 0.27, w: cw - 1.25, h: 0.5, fontSize: 18, bold: true, color: C.text1, valign: "middle", margin: 0, isTextBox: true, objectName: nm("card-t") });
-    s.addText(d, { x: x + 1.0, y: y + 0.85, w: cw - 1.25, h: ch - 1.0, fontSize: 14, color: C.text1, valign: "top", margin: 0, isTextBox: true, objectName: nm("card-d") });
+  cells.forEach(([v, d, hot], k) => {
+    const x = cx0 + (k % 2) * (cw + cg), y = ry0 + Math.floor(k / 2) * (chh + cg);
+    s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x, y, w: cw, h: chh, rectRadius: 0.06, fill: { color: hot ? C.accent1 : C.background2 }, line: { color: hot ? C.accent1 : C.accent6, width: 1 }, objectName: nm("mx-cell") });
+    s.addText(v, { x: x + 0.1, y: y + 0.1, w: cw - 0.2, h: 0.55, fontSize: 26, bold: true, fontFace: THEME.headFontFace, color: hot ? C.background1 : C.accent1, align: "center", valign: "middle", margin: 0, isTextBox: true, objectName: nm("mx-v") });
+    s.addText(d, { x: x + 0.1, y: y + 0.65, w: cw - 0.2, h: 0.35, fontSize: 12, color: hot ? C.background1 : C.accent5, align: "center", valign: "top", margin: 0, isTextBox: true, objectName: nm("mx-d") });
   });
+  s.addText("Every model is reported in every cell. The gap from top left to bottom right is the finding.", { x: lx + 0.3, y: ry0 + 2 * chh + cg + 0.2, w: pw - 0.6, h: 0.5, fontSize: 12, italic: true, color: C.accent5, valign: "top", margin: 0, isTextBox: true, objectName: nm("caption") });
+
+  // Right: global alarm vs per-stage alarm flow
+  const rx = MX + pw + 0.35, ix = rx + 0.3, iw = pw - 0.6;
+  panel(rx, 2, "Plant-aware alarms", "Measure the change in false alarms and in time to detect");
+  s.addText("GDN: one global alarm", { x: ix, y: py + 1.45, w: iw, h: 0.35, fontSize: 13, bold: true, color: C.text1, margin: 0, isTextBox: true, objectName: nm("flow-l") });
+  const ag = 0.3, bw = (iw - 3 * ag) / 4, by = py + 1.85, bh = 0.6;
+  ["51 sensor errors", "max over all", "one threshold", "alarm: where?"].forEach((t, i) => {
+    const x = ix + i * (bw + ag), last = i === 3;
+    s.addText(t, { shape: pres.shapes.ROUNDED_RECTANGLE, rectRadius: 0.06, x, y: by, w: bw, h: bh, fontSize: 12, bold: last, color: last ? C.accent2 : C.text1, fill: { color: C.background2 }, line: { color: last ? C.accent2 : C.accent6, width: last ? 1.5 : 1 }, align: "center", valign: "middle", margin: 2, isTextBox: true, objectName: nm("flow-b") });
+    if (!last) arrow(x + bw, by + bh / 2, x + bw + ag);
+  });
+
+  s.addText("Ours: a threshold per stage, then persistence", { x: ix, y: py + 2.7, w: iw, h: 0.35, fontSize: 13, bold: true, color: C.text1, margin: 0, isTextBox: true, objectName: nm("flow-l") });
+  const gy = py + 3.1, rh = 0.25, lw = 0.35, tw = 1.5;
+  const level = [0.45, 0.35, 0.95, 0.4, 0.3, 0.5], thr = [0.7, 0.6, 0.65, 0.75, 0.55, 0.8];
+  level.forEach((lv, r) => {
+    const y = gy + r * rh, over = lv > thr[r];
+    s.addText(`P${r + 1}`, { x: ix, y, w: lw, h: rh - 0.03, fontSize: 10, bold: over, color: over ? C.accent2 : C.accent5, valign: "middle", margin: 0, isTextBox: true, objectName: nm("st-l") });
+    s.addShape(pres.shapes.RECTANGLE, { x: ix + lw, y: y + 0.03, w: tw, h: rh - 0.09, fill: { color: C.background2 }, line: { color: C.accent6, width: 0.5 }, objectName: nm("st-track") });
+    s.addShape(pres.shapes.RECTANGLE, { x: ix + lw, y: y + 0.03, w: tw * lv, h: rh - 0.09, fill: { color: over ? C.accent2 : C.accent6 }, line: { color: over ? C.accent2 : C.accent6, width: 0.5 }, objectName: nm("st-bar") });
+    s.addShape(pres.shapes.LINE, { x: ix + lw + tw * thr[r], y, w: 0.001, h: rh - 0.03, line: { color: C.accent3, width: 2 }, objectName: nm("st-thr") });
+  });
+  const sw = 0.3, sg = 0.06, kx = ix + lw + tw + ag, ky = gy + 3 * rh - sw / 2 - 0.1;
+  arrow(ix + lw + tw + 0.05, ky + sw / 2, kx - 0.05);
+  [0, 1, 1, 0, 1].forEach((on, i) => s.addShape(pres.shapes.RECTANGLE, { x: kx + i * (sw + sg), y: ky, w: sw, h: sw, fill: { color: on ? C.accent2 : C.background2 }, line: { color: on ? C.accent2 : C.accent6, width: 0.75 }, objectName: nm("kn-cell") }));
+  const kw = 5 * sw + 4 * sg, ax = kx + kw + ag, aw = ix + iw - ax;
+  arrow(kx + kw + 0.05, ky + sw / 2, ax - 0.05);
+  s.addText("P3 alarm", { shape: pres.shapes.ROUNDED_RECTANGLE, rectRadius: 0.06, x: ax, y: ky - 0.15, w: aw, h: sw + 0.3, fontSize: 13, bold: true, color: C.background1, fill: { color: C.accent2 }, line: { color: C.accent2 }, align: "center", valign: "middle", margin: 0, isTextBox: true, objectName: nm("alarm") });
+  s.addText("3 of last 5 steps", { x: kx - 0.1, y: ky + sw + 0.1, w: kw + 0.2, h: 0.3, fontSize: 11, color: C.accent5, align: "center", margin: 0, isTextBox: true, objectName: nm("kn-l") });
+  s.addText("per-stage error vs its own threshold", { x: ix, y: gy + 6 * rh + 0.05, w: 3.2, h: 0.3, fontSize: 11, color: C.accent5, margin: 0, isTextBox: true, objectName: nm("st-cap") });
+
+  s.addNotes([
+    "1. Rigorous re-evaluation. Most papers pick the threshold with test labels (best-F1) and many also point-adjust, which credits a whole attack once any step is flagged. We report every model under three threshold rules (best-F1 oracle, val-max, val q99.9) and every counting rule (point-wise, point-adjusted, event-level, composite F1, time to detect). Bottom right is what a deployed system would actually see. Cells marked ? are planned; nothing measured yet.",
+    "2. Plant-aware alarms. GDN already ranks sensors by error, so it can point at a sensor, but it alarms on the max over all 51 sensors against one global threshold. A noisy stage therefore sets the bar for quiet ones. We group per-sensor errors by stage P1-P6 (digit in the tag, e.g. LIT301 -> P3), set each stage's threshold from validation data only, and require 3 of the last 5 steps to alarm (k and n fixed in advance). We measure false alarms and time to detect against the global rule.",
+    "Not on this slide: WADI transfer (still in the week 5 plan) and optional network fusion (slide 7).",
+  ].join("\n"));
 }
 
 // ---------- 11. Demo plan ----------
@@ -391,6 +468,65 @@ const TBL_BORDER = { type: "solid", pt: 0.75, color: HEX.accent6 };
   ];
   s.addTable(rows, { x: MX, y: 1.6, w: W - 2 * MX, colW: [4.0, 8.133], fontSize: 14, color: C.text1, border: TBL_BORDER, rowH: 0.72, valign: "middle", objectName: nm("table") });
 }
+
+// ---------- 14. Glossary ----------
+const GLOSSARY = [
+  ["Plant and data", [
+    ["SWaT", "Secure Water Treatment: iTrust's six-stage treatment testbed at SUTD. Its Dec 2015 dataset is our main benchmark"],
+    ["WADI", "Water Distribution: iTrust's distribution-network testbed. Our transfer target"],
+    ["EPIC", "Electric Power and Intelligent Control: iTrust's power testbed. Rejected: no process attacks released"],
+    ["P1–P6", "SWaT's six process stages. A tag's first digit gives its stage, e.g. LIT301 is in P3"],
+    ["Sensor / actuator", "A sensor measures the process (level, flow); an actuator changes it (valve, pump)"],
+    ["Tag prefixes", "FIT flow, LIT level, AIT analyser, PIT / DPIT (differential) pressure; MV motorised valve, P pump, UV dechlorinator"],
+    ["HMI", "Human–machine interface: the operator's screen. Spoofed sensors make it show false values"],
+    ["SSSP · SSMP · MSSP · MSMP", "SWaT attack categories: single- or multi-stage, at a single point or multiple points"],
+    ["Zeek · Suricata · CIP", "Zeek turns traffic into logs (conn.log); Suricata is a rule-based IDS; CIP is the industrial protocol in cip.log"],
+    ["Parquet", "Columnar file format we convert the raw xlsx / csv into for fast loading"],
+    ["Downsampling ÷10", "Replace each block of 10 one-second rows with its median, as GDN does"],
+    ["Min–max scaling", "Rescale each signal to [0, 1] using the training min and max"],
+    ["Validation split", "Last 10% of normal training data, held out to set thresholds without attack labels"],
+  ]],
+  ["Models", [
+    ["Semi-supervised", "Train on normal data only; attack labels are used only to evaluate"],
+    ["Anomaly score", "One number per time step; higher means less like normal operation"],
+    ["PCA", "Principal component analysis: projects onto the main directions of variance. Score = reconstruction error"],
+    ["Isolation Forest", "iForest: random splitting trees. Points isolated in few splits are anomalous"],
+    ["Autoencoder", "Network that compresses its input and reconstructs it. Poor reconstruction signals an anomaly"],
+    ["USAD", "UnSupervised Anomaly Detection (Audibert et al. 2020): two autoencoders sharing an encoder, trained adversarially"],
+    ["GDN", "Graph Deviation Network (Deng & Hooi 2021): learns a sensor graph and forecasts each sensor from its neighbours"],
+    ["Embedding · top-k", "A learned vector per sensor. Each sensor's k most similar sensors become its graph neighbours"],
+    ["Graph attention", "Weights each neighbour's contribution to a forecast by learned relevance"],
+    ["Window", "The last few time steps fed to a model: 5 for GDN, 12 for USAD"],
+    ["Robust normalisation", "Scale each sensor's error by its median and IQR (interquartile range), which outliers barely move"],
+    ["LSTM · GRU · CUSUM", "LSTM and GRU are recurrent networks for sequences; CUSUM is a cumulative-sum change detector"],
+    ["Seed", "Random-number seed. We run seeds 0, 1, 2 and report mean ± std"],
+  ]],
+  ["Evaluation and alarms", [
+    ["Threshold", "Score value above which a time step is flagged as an alarm"],
+    ["Precision · recall · F1", "Share of alarms that are real · share of attack steps caught · their harmonic mean"],
+    ["Point-wise", "Every time step counted separately as a true positive, false positive or miss"],
+    ["Point-adjust (PA)", "If any step in an attack is flagged, every step of it counts as detected. Inflates F1 (Kim et al. 2022)"],
+    ["Event-level", "Each attack counted once: detected if any of its steps is flagged"],
+    ["Composite F1", "Harmonic mean of point-wise precision and event-level recall (Garg et al. 2021)"],
+    ["Best-F1 oracle", "Threshold picked with test labels to maximise F1. Not deployable; reported for comparison"],
+    ["val_max", "GDN's rule: threshold = highest score seen on validation data"],
+    ["val_q99.9", "Threshold = 99.9th percentile of validation scores"],
+    ["Time to detect", "TTD: seconds from attack start to the first alarm"],
+    ["ROC-AUC · PR-AUC", "Threshold-free area under the ROC curve and the precision–recall curve"],
+    ["Stage-wise alarm", "A separate threshold per stage P1–P6, applied to that stage's sensor errors"],
+    ["k-of-n persistence", "Raise an alarm only if k of the last n steps exceed the threshold (we use 3 of 5)"],
+    ["Transfer", "Apply the SWaT-tuned configuration to WADI without re-tuning"],
+    ["Network fusion", "Combining network traffic features with process data"],
+  ]],
+];
+GLOSSARY.forEach(([group, terms], gi) => {
+  const s = contentSlide("Appendix", `Glossary · ${gi + 1} of ${GLOSSARY.length}`, `Glossary: ${group.toLowerCase()}`);
+  const half = Math.ceil(terms.length / 2), g = 0.35, tw = (W - 2 * MX - g) / 2;
+  [terms.slice(0, half), terms.slice(half)].forEach((col, c) => {
+    const rows = col.map(([t, d]) => [{ text: t, options: { bold: true, color: C.accent1 } }, d]);
+    s.addTable(rows, { x: MX + c * (tw + g), y: 1.55, w: tw, colW: [1.75, tw - 1.75], fontSize: 12, color: C.text1, border: TBL_BORDER, rowH: 0.6, valign: "middle", objectName: nm("table") });
+  });
+});
 
 (async () => {
   await pres.writeFile({ fileName: OUT });

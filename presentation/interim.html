@@ -152,10 +152,21 @@ svg .cell-label { fill: var(--water); }
 .tl-week { font-family: var(--font-mono); font-size: var(--step--1); color: var(--muted); }
 .tl-row p { margin: 0; }
 
+/* Glossary */
+dl.glossary {
+  display: grid; grid-template-columns: minmax(9rem, 13rem) 1fr; margin: 0.75rem 0 0;
+  border: 1px solid var(--rule); border-radius: 4px; background: var(--surface); font-size: var(--step--1);
+}
+dl.glossary dt, dl.glossary dd { margin: 0; padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--rule); }
+dl.glossary dt { font-weight: 600; color: var(--water); }
+dl.glossary dt:last-of-type, dl.glossary dd:last-of-type { border-bottom: 0; }
+
 footer { font-size: var(--step--1); color: var(--muted); border-top: 1px solid var(--rule); padding-top: 1rem; }
 
 @media (max-width: 40rem) {
   .tl-row { grid-template-columns: 1fr; gap: 0.1rem; }
+  dl.glossary { grid-template-columns: 1fr; }
+  dl.glossary dt { border-bottom: 0; padding-bottom: 0; }
 }
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
 </style>
@@ -256,6 +267,14 @@ footer { font-size: var(--step--1); color: var(--muted); border-top: 1px solid v
         </tbody>
       </table>
     </div>
+
+    <h3>Why GDN is the main reproduction target</h3>
+    <ol class="steps prose">
+      <li><strong>A checkable published target.</strong> GDN reports SWaT P 99.35 / R 68.12 / F1 0.81 under point-wise scoring, without point-adjust. Kim et al. (AAAI 2022) show that point-adjust inflates F1 until random scores look competitive, and many SWaT results are reported only that way. GDN's numbers are a fair target to check a reproduction against.</li>
+      <li><strong>Built for a coupled plant.</strong> SWaT's six stages are tightly coupled: opening a valve changes a tank level downstream. GDN learns a graph of which sensors depend on each other from sensor embeddings, and forecasts each sensor from its neighbours with graph attention. An attack that breaks an expected dependency, such as a spoofed level that no longer matches the flows around it, shows up as forecast error. USAD, our second target, reconstructs each window as a flat vector, so the two reproductions contrast a graph-based and a reconstruction-based approach.</li>
+      <li><strong>Names the deviating sensor.</strong> GDN's score is the largest normalised per-sensor forecast error, so every alarm points to a sensor. Our stage-wise alarm logic groups these errors by stage (P1–P6) so operators see which stage alarmed. Detectors that output one score per time step, such as USAD, PCA or Isolation Forest, cannot support this.</li>
+      <li><strong>Feasible on our hardware.</strong> We train on CPU only with 14 GB RAM. GDN is small (window 5, embedding 64, top-15 neighbours), and we implement its graph attention in plain PyTorch without <code>torch_geometric</code>. We follow GDN's own preprocessing (10× downsampling, min–max scaling, last 10% of training data for validation), which keeps our numbers comparable and cuts SWaT to about 50k training windows.</li>
+    </ol>
 
     <h3>Network-based and fusion detection on SWaT</h3>
     <p class="prose">We checked whether detection from network traffic would be the more novel route. A short literature search turned up a small, preliminary body of work:</p>
@@ -460,6 +479,63 @@ footer { font-size: var(--step--1); color: var(--muted); border-top: 1px solid v
         </tbody>
       </table>
     </div>
+  </section>
+
+  <section id="glossary">
+    <header><div class="eyebrow">11 · Glossary</div><h2>Terms used on this page</h2></header>
+
+    <h3>Plant and data</h3>
+    <dl class="glossary">
+      <dt>SWaT</dt><dd>Secure Water Treatment: iTrust's six-stage water treatment testbed at SUTD. Its December 2015 dataset is our main benchmark.</dd>
+      <dt>WADI</dt><dd>Water Distribution: iTrust's distribution-network testbed. Our transfer target.</dd>
+      <dt>EPIC</dt><dd>Electric Power and Intelligent Control: iTrust's power testbed. Rejected because its released data has no attacks on the process.</dd>
+      <dt>P1–P6</dt><dd>SWaT's six process stages. The first digit of a tag gives its stage, so <code>LIT301</code> is in P3.</dd>
+      <dt>Sensor / actuator</dt><dd>A sensor measures the process, such as a level or flow. An actuator changes it, such as a valve or pump.</dd>
+      <dt>Tag prefixes</dt><dd><code>FIT</code> flow, <code>LIT</code> level, <code>AIT</code> analyser, <code>PIT</code> / <code>DPIT</code> (differential) pressure sensors; <code>MV</code> motorised valve, <code>P</code> pump, <code>UV</code> ultraviolet dechlorinator.</dd>
+      <dt>HMI</dt><dd>Human–machine interface: the operator's screen. A spoofed sensor makes it show false values.</dd>
+      <dt>SSSP · SSMP · MSSP · MSMP</dt><dd>SWaT attack categories: single- or multi-stage, at a single point or at multiple points.</dd>
+      <dt>Zeek · Suricata · CIP</dt><dd>Zeek turns network traffic into logs such as <code>conn.log</code>. Suricata is a rule-based intrusion detection system. CIP (Common Industrial Protocol) is the industrial protocol recorded in <code>cip.log</code>.</dd>
+      <dt>Parquet</dt><dd>Columnar file format we convert the raw xlsx and csv files into for fast loading.</dd>
+      <dt>Downsampling ÷10</dt><dd>Replace each block of 10 one-second rows with its median, as GDN does.</dd>
+      <dt>Min–max scaling</dt><dd>Rescale each signal to [0, 1] using the training minimum and maximum.</dd>
+      <dt>Validation split</dt><dd>The last 10% of normal training data, held out so thresholds can be set without attack labels.</dd>
+    </dl>
+
+    <h3>Models</h3>
+    <dl class="glossary">
+      <dt>Semi-supervised</dt><dd>Train on normal data only. Attack labels are used only to evaluate.</dd>
+      <dt>Anomaly score</dt><dd>One number per time step. Higher means less like normal operation.</dd>
+      <dt>PCA</dt><dd>Principal component analysis: projects data onto its main directions of variance. The score is the reconstruction error.</dd>
+      <dt>Isolation Forest (iForest)</dt><dd>An ensemble of random splitting trees. Points that are isolated in few splits are anomalous.</dd>
+      <dt>Autoencoder</dt><dd>A network that compresses its input and reconstructs it. Poor reconstruction signals an anomaly.</dd>
+      <dt>USAD</dt><dd>UnSupervised Anomaly Detection (Audibert et al. 2020): two autoencoders sharing one encoder, trained adversarially.</dd>
+      <dt>GDN</dt><dd>Graph Deviation Network (Deng &amp; Hooi 2021): learns a graph of sensor dependencies and forecasts each sensor from its neighbours.</dd>
+      <dt>Embedding · top-k</dt><dd>GDN learns a vector per sensor. Each sensor's <em>k</em> most similar sensors become its graph neighbours.</dd>
+      <dt>Graph attention</dt><dd>Weights each neighbour's contribution to a forecast by a learned relevance.</dd>
+      <dt>Window</dt><dd>The last few time steps fed to a model: 5 for GDN, 12 for USAD.</dd>
+      <dt>Robust normalisation</dt><dd>Scale each sensor's error by its median and IQR (interquartile range), which outliers barely move.</dd>
+      <dt>LSTM · GRU · CUSUM</dt><dd>LSTM and GRU are recurrent neural networks for sequences. CUSUM is a cumulative-sum change detector.</dd>
+      <dt>Seed</dt><dd>Random-number seed. We run seeds 0, 1 and 2 and report the mean ± std.</dd>
+    </dl>
+
+    <h3>Evaluation and alarms</h3>
+    <dl class="glossary">
+      <dt>Threshold</dt><dd>The score value above which a time step is flagged as an alarm.</dd>
+      <dt>Precision · recall · F1</dt><dd>The share of alarms that are real attacks, the share of attack steps caught, and their harmonic mean.</dd>
+      <dt>Point-wise</dt><dd>Every time step is counted separately as a true positive, false positive or miss.</dd>
+      <dt>Point-adjust (PA)</dt><dd>If any step in an attack is flagged, every step of that attack counts as detected. Inflates F1 (Kim et al. 2022).</dd>
+      <dt>Event-level</dt><dd>Each attack is counted once, as detected if any of its steps is flagged.</dd>
+      <dt>Composite F1</dt><dd>Harmonic mean of point-wise precision and event-level recall (Garg et al. 2021).</dd>
+      <dt>Best-F1 oracle</dt><dd>A threshold picked with test labels to maximise F1. Not deployable; reported for comparison with papers.</dd>
+      <dt><code>val_max</code></dt><dd>GDN's rule: the threshold is the highest score seen on validation data.</dd>
+      <dt><code>val_q99.9</code></dt><dd>The threshold is the 99.9th percentile of validation scores.</dd>
+      <dt>Time to detect (TTD)</dt><dd>Seconds from the start of an attack to the first alarm.</dd>
+      <dt>ROC-AUC · PR-AUC</dt><dd>Threshold-free area under the ROC curve and under the precision–recall curve.</dd>
+      <dt>Stage-wise alarm</dt><dd>A separate threshold per stage P1–P6, applied to that stage's sensor errors.</dd>
+      <dt>k-of-n persistence</dt><dd>Raise an alarm only if <em>k</em> of the last <em>n</em> steps exceed the threshold. We use 3 of 5.</dd>
+      <dt>Transfer</dt><dd>Apply the configuration tuned on SWaT to WADI without re-tuning.</dd>
+      <dt>Network fusion</dt><dd>Combining network traffic features with process data.</dd>
+    </dl>
   </section>
 
   <footer>
