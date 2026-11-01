@@ -1,0 +1,12 @@
+{
+  "gdn": {
+    "source": "Deng & Hooi, AAAI 2021, Table 2 (best-F1 threshold, point-wise, no point-adjust)",
+    "swat": {"precision": 0.9935, "recall": 0.6812, "f1": 0.81, "protocol": "point-wise"},
+    "wadi": {"precision": 0.9750, "recall": 0.4019, "f1": 0.57, "protocol": "point-wise", "note": "WADI 2017 release; we use the 2019 A2 release"}
+  },
+  "usad": {
+    "source": "Audibert et al., KDD 2020 (values as re-reported by later papers; original table not yet verified)",
+    "swat": {"f1": 0.846, "protocol": "point-adjusted"},
+    "wadi": {"f1": null, "protocol": "unclear", "note": "secondary sources disagree (0.23 point-wise vs 0.43/0.57/0.84 under other protocols); verify against the paper"}
+  }
+}

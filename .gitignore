@@ -1,0 +1,6 @@
+*.zip
+data/
+.venv/
+results/*.npz
+__pycache__/
+*.egg-info/
