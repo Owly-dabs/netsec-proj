@@ -4,6 +4,7 @@ Example: python -m swatad.run --dataset swat --model gdn --seed 0
 """
 import argparse
 import json
+import pickle
 import time
 from pathlib import Path
 
@@ -17,6 +18,7 @@ from .models.gdn import GDNDetector
 from .models.usad import USADDetector
 
 RESULTS = Path("results")
+MODELS_DIR = Path("models")
 
 MODELS = {"pca": PCADetector, "iforest": IForestDetector, "usad": USADDetector, "gdn": GDNDetector}
 
@@ -53,6 +55,8 @@ def main(argv: list[str] | None = None) -> dict:
     ap.add_argument("--drift-tol", type=float,
                     help="drop sensors whose validation values exceed the train range by this factor")
     ap.add_argument("--tag", default="", help="suffix for the result file name")
+    ap.add_argument("--reuse", action="store_true",
+                    help="load the fitted model from models/<name>.pkl and skip training")
     args = ap.parse_args(argv)
 
     split = load_split(args.dataset, drift_tol=args.drift_tol)
@@ -60,11 +64,21 @@ def main(argv: list[str] | None = None) -> dict:
     epochs = 2 if args.quick else args.epochs
     extra = {"norm_stats": args.norm_stats} if args.norm_stats else {}
     cfg_ds = args.config_from or args.dataset
-    det = build(cfg_ds, args.model, args.seed, epochs, extra)
-
-    t0 = time.time()
-    det.fit(train, split.val)
-    train_seconds = time.time() - t0
+    name = f"{args.dataset}_{args.model}{args.tag}_s{args.seed}"
+    model_path = MODELS_DIR / f"{name}.pkl"
+    if args.reuse:
+        with model_path.open("rb") as f:
+            det, train_seconds = pickle.load(f)
+        print(f"loaded fitted model {model_path}")
+    else:
+        det = build(cfg_ds, args.model, args.seed, epochs, extra)
+        t0 = time.time()
+        det.fit(train, split.val)
+        train_seconds = time.time() - t0
+        if not args.quick:
+            MODELS_DIR.mkdir(exist_ok=True)
+            with model_path.open("wb") as f:
+                pickle.dump((det, train_seconds), f)
     scores, val_scores = det.score(split.test), det.score(split.val)
     labels = split.test_labels
 
@@ -97,7 +111,6 @@ def main(argv: list[str] | None = None) -> dict:
         "stage_alarms": stage_info,
     }
     RESULTS.mkdir(exist_ok=True)
-    name = f"{args.dataset}_{args.model}{args.tag}_s{args.seed}"
     (RESULTS / f"{name}.json").write_text(json.dumps(out, indent=2, default=float))
     arrays = {"scores": scores, "labels": labels, "val_scores": val_scores}
     if stage_info:
