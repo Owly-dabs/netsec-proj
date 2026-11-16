@@ -5,7 +5,7 @@ import { createDetection } from './detector.mjs';
 const outcomes=new Map();
 const files = Object.fromEntries([
  ['/', 'index.html', 'text/html'],
- ...['app.js','attack-controller.js','plant.js','visual-response.js','routing.js','equipment.js','vendor/three.module.js','vendor/three.core.js','vendor/OrbitControls.js'].map(f=>['/'+f,f,'text/javascript']),
+ ...['app.js','log-focus.js','attack-controller.js','plant.js','visual-response.js','routing.js','equipment.js','vendor/three.module.js','vendor/three.core.js','vendor/OrbitControls.js'].map(f=>['/'+f,f,'text/javascript']),
  ['/style.css','style.css','text/css']
 ].map(([url,file,type])=>[url,[file,type]]));
 export const server = createServer(async (req, res) => {

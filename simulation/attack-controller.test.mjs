@@ -126,3 +126,10 @@ test('a persistent missed attack logs one miss while rechecks continue',async()=
 test('default repair keeps verification visible for 3.5 seconds',async()=>{
  const {controller,clock}=setup({repairDelay:undefined});await controller.toggle(target('T101'));clock.tick(1400);assert.equal(controller.active.get('T101').state,'repairing');clock.tick(2100);assert.equal(controller.active.size,0);controller.dispose();
 });
+test('log metadata links an attack through repair and separates a later attack on the same component',async()=>{
+ const events=[];const {controller,clock}=setup({onEvent:(...e)=>events.push(e)});
+ await controller.toggle(target('T101'));clock.tick(1400);await controller.toggle(target('T101'));
+ const linked=events.filter(([kind])=>['attack','detected','resolved'].includes(kind));
+ assert.deepEqual(linked.slice(0,3).map(e=>e[2].attackIds),[['attack-1'],['attack-1'],['attack-1']]);
+ assert.deepEqual(linked.slice(3).map(e=>e[2].attackIds),[['attack-2'],['attack-2']]);controller.dispose();
+});

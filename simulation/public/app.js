@@ -1,7 +1,9 @@
 import { mountPlant } from './plant.js';
 import { AttackController } from './attack-controller.js';
+import { LogFocus } from './log-focus.js';
 const events=document.querySelector('#events');
 let plant,controller;
+const logFocus=new LogFocus(events,updateLogFade);
 function updateLogFade(){
  events.dataset.atTop=String(events.scrollTop<=1);
  events.dataset.atBottom=String(events.scrollHeight-events.clientHeight-events.scrollTop<=1);
@@ -9,13 +11,15 @@ function updateLogFade(){
 events.addEventListener('scroll',updateLogFade,{passive:true});
 new ResizeObserver(updateLogFade).observe(events);
 updateLogFade();
-function log(kind,text){
+function log(kind,text,context={}){
  const previousHeight=events.scrollHeight,readingHistory=events.scrollTop>8;
  const row=document.createElement('li'),time=document.createElement('time'),label=document.createElement('span'),message=document.createElement('span');
  const now=new Date();time.dateTime=now.toISOString();time.textContent=now.toLocaleTimeString('en-GB')+'.'+String(now.getMilliseconds()).padStart(3,'0');
  label.className='log-level';label.textContent=kind==='monitor'?'MONITORING':kind.toUpperCase();message.className='log-message';message.textContent=text;
- row.dataset.kind=kind;row.title=`${time.textContent} ${label.textContent} ${text}`;row.append(time,label,message);events.prepend(row);
+ row.dataset.kind=kind;
+ logFocus.add(row,context); row.title=`${time.textContent} ${label.textContent} ${text}`;row.append(time,label,message);events.prepend(row);
  if(readingHistory)events.scrollTop+=events.scrollHeight-previousHeight;else events.scrollTop=0;
+ logFocus.refresh();
  updateLogFade();
 }
 function attack(stage,component){return controller.toggle({componentId:component.userData.id,stage,name:`${stage} / ${component.userData.id}`,component});}

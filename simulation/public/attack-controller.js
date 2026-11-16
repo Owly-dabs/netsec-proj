@@ -16,16 +16,16 @@ export class AttackController {
   if(this.disposed)return;
   this.changed(target.stage);
   const verification=this.verifications.get(target.stage);
-  if(verification){this.cancel(verification.timer);this.verifications.delete(target.stage);this.onSuspicion(target.stage,false);this.onEvent('monitor',`${target.stage} · verification cancelled`);}
+  if(verification){this.cancel(verification.timer);this.verifications.delete(target.stage);this.onSuspicion(target.stage,false);this.onEvent('monitor',`${target.stage} · verification cancelled`,{traceId:verification.traceId});}
   const previous=this.active.get(target.componentId);
   if(previous){
    this.cancel(this.repairTimers.get(previous.attackId));this.repairTimers.delete(previous.attackId);
    this.cancel(this.retryTimers.get(previous.attackId));this.retryTimers.delete(previous.attackId);
-   this.active.delete(target.componentId);this.onState(target.componentId,'stopped');this.onEvent('resolved',`${previous.name} · attack stopped`);
+   this.active.delete(target.componentId);this.onState(target.componentId,'stopped');this.onEvent('resolved',`${previous.name} · attack stopped`,{attackIds:[previous.attackId]});
    return;
   }
   const entry={...target,attackId:this.idFactory(),state:'pending'};
-  entry.type=this.onStart(entry);this.active.set(entry.componentId,entry);this.status='alert';this.onEvent('attack',`${entry.name} · ${entry.type}`);
+  entry.type=this.onStart(entry);this.active.set(entry.componentId,entry);this.status='alert';this.onEvent('attack',`${entry.name} · ${entry.type}`,{attackIds:[entry.attackId]});
   return this.monitor(false,[entry]);
  }
  async monitor(recheck=false,candidates=[...this.active.values()],background=false){
@@ -60,12 +60,12 @@ export class AttackController {
    for(const stageNumber of new Set(predicted)){
     const stage=`P${stageNumber}`;
     if((batch.stages.get(stage)??0)!==(this.stageVersions.get(stage)??0)||[...this.active.values()].some(t=>t.stage===stage)||this.verifications.has(stage))continue;
-    const token={};this.verifications.set(stage,token);this.onSuspicion(stage,true);
-    this.status='alert';this.onEvent('verify',`${stage} · checking alarm`);
+    const token={traceId:this.idFactory()};this.verifications.set(stage,token);this.onSuspicion(stage,true);
+    this.status='alert';this.onEvent('verify',`${stage} · checking alarm`,{traceId:token.traceId});
     token.timer=this.schedule(()=>{
      if(this.verifications.get(stage)!==token)return;
      this.verifications.delete(stage);this.onSuspicion(stage,false);
-     this.onEvent('dismissed',`${stage} · false positive confirmed`);
+     this.onEvent('dismissed',`${stage} · false positive confirmed`,{traceId:token.traceId});
     },this.repairDelay);
    }
    if(background&&batch.revision===this.revision&&!this.active.size&&!predicted.length&&!this.verifications.size&&this.batches.size===1){
@@ -74,13 +74,13 @@ export class AttackController {
    for(const target of pending){
     if(this.active.get(target.componentId)!==target||target.state==='repairing')continue;
     if(!results.get(target.attackId).detected){
-     target.state='missed';this.onState(target.componentId,'missed');if(!target.missReported){target.missReported=true;this.onEvent('missed',`${target.name} · not detected`);}continue;
+     target.state='missed';this.onState(target.componentId,'missed');if(!target.missReported){target.missReported=true;this.onEvent('missed',`${target.name} · not detected`,{attackIds:[target.attackId]});}continue;
     }
-    target.state='repairing';this.onState(target.componentId,'repairing');this.onEvent('detected',`${target.name} · repair started`);
+    target.state='repairing';this.onState(target.componentId,'repairing');this.onEvent('detected',`${target.name} · repair started`,{attackIds:[target.attackId]});
     const timer=this.schedule(()=>{
      this.repairTimers.delete(target.attackId);
      if(this.active.get(target.componentId)!==target||target.state!=='repairing')return;
-     this.active.delete(target.componentId);this.changed(target.stage);this.onState(target.componentId,'resolved');this.onEvent('resolved',`${target.name} · repair complete`);
+     this.active.delete(target.componentId);this.changed(target.stage);this.onState(target.componentId,'resolved');this.onEvent('resolved',`${target.name} · repair complete`,{attackIds:[target.attackId]});
     },this.repairDelay);
     this.repairTimers.set(target.attackId,timer);
    }
@@ -88,7 +88,7 @@ export class AttackController {
    if(!this.disposed&&(background||pending.some(t=>this.active.get(t.componentId)===t))){
     this.onMonitoring('error');
     for(const target of pending)if(this.active.get(target.componentId)===target&&target.state!=='repairing'){target.state='error';this.onState(target.componentId,'error');}
-    if(this.status!=='error'){this.status='error';this.onEvent('error',`${background?'P1–P6':pending.map(t=>t.name).join(', ')} · check failed`);}
+    if(this.status!=='error'){this.status='error';this.onEvent('error',`${background?'P1–P6':pending.map(t=>t.name).join(', ')} · check failed`,{attackIds:pending.map(t=>t.attackId)});}
    }
   }finally{
    this.cancel(timeout);this.batches.delete(batch);
