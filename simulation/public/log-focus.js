@@ -8,17 +8,35 @@ export class LogFocus {
    if(e.key==='Escape'){e.preventDefault();this.focus(null,false);}
    else if((e.key==='Enter'||e.key===' ')&&e.target.matches('li')){e.preventDefault();this.toggle(e.target,false);}
   });
-  document.addEventListener('pointerdown',e=>{if(this.selected&&!list.contains(e.target))this.focus(null);});
+  let outsidePointer=null;
+  document.addEventListener('pointerdown',e=>{
+   if(outsidePointer){outsidePointer.dragged=true;return;}
+   if(this.selected&&!list.contains(e.target)&&e.button===0)
+    outsidePointer={id:e.pointerId,x:e.clientX,y:e.clientY,dragged:!!e.shiftKey};
+  });
+  document.addEventListener('pointermove',e=>{
+   if(outsidePointer?.id===e.pointerId&&Math.hypot(e.clientX-outsidePointer.x,e.clientY-outsidePointer.y)>5)outsidePointer.dragged=true;
+  });
+  document.addEventListener('pointerup',e=>{
+   if(outsidePointer?.id!==e.pointerId)return;
+   const gesture=outsidePointer;outsidePointer=null;
+   if(!gesture.dragged&&!list.contains(e.target))this.focus(null);
+  });
+  document.addEventListener('pointercancel',()=>{outsidePointer=null;});
  }
- add(row,{componentId,attackIds=[],traceId}={}){
-  this.rows.unshift(row);this.keys.set(row,new Set(componentId?[componentId]:attackIds.length?attackIds:[traceId??'plant-monitoring']));
-  row.tabIndex=0;row.setAttribute('role','button');row.setAttribute('aria-pressed','false');
-  if(this.selected)row.hidden=!this.matches(row,this.selected);
+ add(row,{attackIds=[],traceId}={}){
+  this.rows.unshift(row);this.keys.set(row,new Set(attackIds.length?attackIds:[traceId??'plant-monitoring']));
+  row.tabIndex=0;row.setAttribute('role','button');
+  const related=this.matches(row,this.selected);
+  row.hidden=!related;row.classList.toggle('log-related',!!this.selected&&related);
+  row.setAttribute('aria-pressed',String(!!this.selected&&related));
  }
  matches(row,selected){return !selected||[...this.keys.get(row)].some(key=>this.keys.get(selected).has(key));}
  toggle(row,animate=true){this.focus(this.selected===row?null:row,animate);}
- refresh(){if(this.selected)this.focus(this.selected);}
+ // New rows inherit the filter in add(); live updates never replay the transition.
+ refresh(){this.onLayout();}
  async focus(row,animate=true){
+  if(row===this.selected)return;
   const list=this.list,version=this.version=(this.version??0)+1;
   if(!this.selected&&row)this.savedScroll=list.scrollTop;
   this.selected=row;
