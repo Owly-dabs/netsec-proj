@@ -1,0 +1,62 @@
+/* Geist sRGB values from https://vercel.com/geist/colors (light scale).
+   The warm paper is retained for the anatomy plant. */
+:root {
+ --paper: #f7f6f2;
+ --geist-gray-100: #f2f2f2;
+ --geist-gray-900: #666666;
+ --geist-gray-1000: #171717;
+ --geist-red-100: #ffeef0;
+ --geist-red-700: #fc0035;
+ --geist-red-900: #d60020;
+ --geist-amber-100: #fff6e1;
+ --geist-amber-800: #ff9900;
+ --geist-amber-900: #a64f00;
+ --geist-green-100: #ecfdec;
+ --geist-green-700: #28a948;
+ --geist-green-900: #107d32;
+ --color-status-normal-surface: var(--geist-gray-100);
+ --color-status-normal-text: var(--geist-gray-1000);
+ --color-status-normal-solid: var(--geist-gray-900);
+ --color-water: #0070f3;
+ --color-log-surface: var(--paper);
+ --color-log-text: var(--geist-gray-1000);
+ --color-log-time: var(--geist-gray-900);
+ --color-status-attack-surface: var(--geist-red-100);
+ --color-status-attack-text: var(--geist-red-900);
+ --color-status-attack-solid: var(--geist-red-700);
+ --color-status-detected-surface: var(--geist-amber-100);
+ --color-status-detected-text: var(--geist-amber-900);
+ --color-status-detected-solid: var(--geist-amber-800);
+ --color-status-resolved-surface: var(--geist-green-100);
+ --color-status-resolved-text: var(--geist-green-900);
+ --color-status-resolved-solid: var(--geist-green-700);
+ --log-height: min(38vh,216px);
+}
+*{box-sizing:border-box}html,body,main{margin:0;width:100%;height:100%;overflow:hidden}body{background:#f7f6f2;color:#5f5b55;font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab;outline:none}canvas:focus-visible{outline:1px solid #b9b4ab;outline-offset:-3px}aside{position:absolute;bottom:0;left:0;right:0;pointer-events:none;isolation:isolate;background:var(--paper)}#events{list-style:none;padding:0;margin:0;max-height:var(--log-height);overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;overflow-anchor:none;scrollbar-width:thin;scrollbar-color:#c7c0b5 transparent;pointer-events:auto;mask-image:linear-gradient(to bottom,transparent 0,#000 18px,#000 calc(100% - 32px),transparent 100%)}#events:empty{padding:0;pointer-events:none}#events li{display:grid;grid-template-columns:100px 100px minmax(0,1fr);align-items:baseline;gap:14px;min-height:36px;padding:7px 30px;font:12.5px/1.7 ui-monospace,"SFMono-Regular",Menlo,monospace;color:var(--color-log-text);--accent:var(--color-log-time);--row:var(--color-log-surface);background:var(--row)}time{color:var(--color-log-time);font-size:11px;font-variant-numeric:tabular-nums;white-space:nowrap}.log-level{color:var(--accent);font-size:10.5px;letter-spacing:.3px}.log-message{overflow-wrap:anywhere}#events li[data-kind=attack],#events li[data-kind=missed],#events li[data-kind=error]{--accent:var(--color-status-attack-text)}#events li[data-kind=detected],#events li[data-kind=verify]{--accent:var(--color-status-detected-text)}#events li[data-kind=resolved]{--accent:var(--color-status-resolved-text)}#graphics-error{position:absolute;top:45%;left:10%;right:10%;text-align:center;color:#78716b}@media(max-width:650px){aside{bottom:0}:root{--log-height:min(38vh,288px)}#events{max-height:var(--log-height)}#events li{grid-template-columns:82px 75px minmax(0,1fr);gap:8px;padding:6px 14px;font-size:11px}.log-level{font-size:9px}time{font-size:9px}}
+
+#events[data-at-top="true"] { mask-image:linear-gradient(to bottom,#000 0,#000 calc(100% - 32px),transparent 100%); }
+#events[data-at-bottom="true"] { mask-image:linear-gradient(to bottom,transparent 0,#000 18px,#000 100%); }
+#events[data-at-top="true"][data-at-bottom="true"] { mask-image:none; }
+
+#events li[data-kind=normal]{--accent:var(--color-status-normal-text)}
+
+/* Anchor short logs at the bottom left; longer history grows upward. */
+aside{left:0;right:auto;width:min(860px,100%);transform:none;background:none}
+aside::before{content:"";position:absolute;top:-120px;bottom:0;left:-30%;right:-30%;z-index:-1;pointer-events:none;
+ background:radial-gradient(ellipse 50% 100% at 50% 100%,var(--paper) 0,var(--paper) 62%,rgb(247 246 242 / .82) 76%,rgb(247 246 242 / 0) 100%)}
+#events{height:auto}
+#events li{--row:transparent;--edge:#dcd8d1;padding:7px 20px;box-shadow:inset 2px 0 0 var(--edge)}
+#events li[data-kind=normal]{--edge:var(--color-log-time)}
+#events li[data-kind=attack],#events li[data-kind=missed],#events li[data-kind=error]{--edge:var(--color-status-attack-solid)}
+#events li[data-kind=detected],#events li[data-kind=verify]{--edge:var(--color-status-detected-solid)}
+#events li[data-kind=resolved]{--edge:var(--color-status-resolved-solid)}
+
+/* Auto mode: a small toggle at the top right. Off by default. */
+#auto{position:absolute;top:16px;right:16px;display:flex;align-items:center;gap:8px;padding:6px 12px;border:1px solid #dcd8d1;border-radius:999px;background:rgb(247 246 242 / .9);color:var(--geist-gray-1000);font:11px/1.4 ui-monospace,"SFMono-Regular",Menlo,monospace;letter-spacing:.3px;cursor:pointer}
+#auto::before{content:"";width:6px;height:6px;border-radius:50%;background:#c7c0b5}
+#auto:hover{border-color:#b9b4ab}
+#auto:focus-visible{outline:2px solid var(--color-water);outline-offset:2px}
+#auto[aria-pressed="true"]{border-color:var(--color-status-attack-solid);color:var(--color-status-attack-text)}
+#auto[aria-pressed="true"]::before{background:var(--color-status-attack-solid)}
+
+@media(max-width:650px){aside{left:0;width:100%}}

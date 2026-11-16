@@ -1,0 +1,8 @@
+import { mkdirSync, copyFileSync, writeFileSync, readFileSync } from 'node:fs';
+mkdirSync(new URL('./public/vendor/', import.meta.url), { recursive: true });
+for (const name of ['three.module.js','three.core.js']) copyFileSync(new URL(`./node_modules/three/build/${name}`,import.meta.url),new URL(`./public/vendor/${name}`,import.meta.url));
+const orbit = readFileSync(new URL('./node_modules/three/examples/jsm/controls/OrbitControls.js',import.meta.url),'utf8').replace("from 'three'", "from './three.module.js'");
+writeFileSync(new URL('./public/vendor/OrbitControls.js',import.meta.url),orbit);
+writeFileSync(new URL('./public/index.html',import.meta.url), `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SWaT plant simulation</title><link rel="stylesheet" href="/style.css"></head><body><main><canvas tabindex="0" aria-label="Water treatment plant. Drag to rotate. Shift-drag or right-drag to pan. Scroll to zoom. Click equipment to toggle an attack. Use left and right arrow keys to select equipment; Enter toggles the selected target."></canvas><button id="auto" type="button" aria-pressed="false" title="Start random attacks automatically">Auto</button><aside aria-label="Attack and detection events"><ol id="events" tabindex="0" aria-label="Attack log. Newest events first." aria-live="polite"></ol></aside><p id="graphics-error" hidden>3D graphics are unavailable.</p></main><script type="module" src="/app.js"></script></body></html>`);
+copyFileSync(new URL('./node_modules/three/LICENSE',import.meta.url),new URL('./public/vendor/THREE-LICENSE',import.meta.url));
+console.log('Built Three.js plant');

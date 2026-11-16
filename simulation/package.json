@@ -1,0 +1,1 @@
+{"name":"swat-simulation","private":true,"type":"module","scripts":{"build":"node build.mjs","start":"node server.mjs","test":"node --test"},"engines":{"node":">=20.10"},"dependencies":{"three":"^0.182.0"}}

@@ -8,3 +8,8 @@ __pycache__/
 results/*.json
 !results/published.json
 results/*.log
+
+# Local tools and macOS metadata
+/.agents/
+/skills-lock.json
+.DS_Store
