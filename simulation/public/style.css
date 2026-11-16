@@ -64,9 +64,9 @@ aside::before{content:"";position:absolute;top:-120px;bottom:0;left:-30%;right:-
 #events::-webkit-scrollbar{display:none}
 
 /* Related events stay newest first: read the attack sequence from bottom to top. */
-#events li{cursor:pointer;transition:opacity 200ms cubic-bezier(0.23,1,0.32,1)}
-#events li.log-unrelated{opacity:.13}
+#events li{cursor:pointer;user-select:none;-webkit-user-select:none}
+#events li[hidden]{display:none}
 #events li:focus-visible{outline:1px solid var(--color-log-text);outline-offset:-2px}
-#events li.log-related{background:rgb(23 23 23 / .035)}
-@media(hover:hover) and (pointer:fine){#events li:hover{background:rgb(23 23 23 / .045)}}
+#events li.log-related{background:linear-gradient(to right,rgb(23 23 23 / .035) 0%,rgb(23 23 23 / .035) 55%,transparent 100%)}
+@media(hover:hover) and (pointer:fine){#events li:hover{background:linear-gradient(to right,rgb(23 23 23 / .045),transparent)}}
 @media(prefers-reduced-motion:reduce){#events li{transition-duration:100ms}}
